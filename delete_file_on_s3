@@ -1,0 +1,88 @@
+<?php 
+
+require 'vendor/autoload.php';
+
+use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
+
+//REGION対応表 : https://docs.aws.amazon.com/ja_jp/general/latest/gr/rande.html
+const MY_REGION = '';
+const MY_BUCKET = '';
+const TARGET_PATH = '';
+const MEDIA_PATTERN = '/.*.(png|jpg|jpeg|gif)/';
+
+// 削除しない画像は1つ以上あり、特定のフォルダ内の全ファイルを削除することは想定していない
+const NOT_DELETE_IMG_LIST = array(
+    '画像パス1',
+    '画像パス2'
+);
+
+//'profile'は、.aws/credentialsに記載されている
+$s3 = new Aws\S3\S3Client([
+    'profile' => 'default',
+    'region'  => MY_REGION,
+    'version' => 'latest'
+]);
+
+$delete_img_list = array();
+$delete_flg = FALSE;
+
+echo "==============削除しないファイル==========\n";
+foreach (NOT_DELETE_IMG_LIST as $img_path) {
+    echo $img_path . PHP_EOL;
+}
+
+try {
+    //最大1000件取得する
+    $ImgInS3 = $s3->listObjects([
+        'Bucket' => MY_BUCKET,
+        'Prefix' => TARGET_PATH
+    ]);
+
+    // echo "==============削除前のS3にある画像==========\n";
+    // foreach ($ImgInS3['Contents'] as $object) {
+    //     echo $object['Key']. PHP_EOL;
+    // }
+
+    foreach ($ImgInS3['Contents'] as $object) {
+        foreach (NOT_DELETE_IMG_LIST as $img){
+            if ($object['Key'] === $img ) {
+                $delete_flg = FALSE;
+                break;
+            }
+            $delete_flg = TRUE;
+        }
+
+        if ($delete_flg){
+            if(preg_match(MEDIA_PATTERN, $object['Key'])) {
+                array_push($delete_img_list,$object['Key']);
+            }
+        }
+        $delete_flg = FALSE;
+    }
+
+    echo "==============削除前のS3にある削除対象画像==========\n";
+    foreach ($delete_img_list as $img_path) {
+        echo $img_path . PHP_EOL;
+    }
+
+    foreach ($delete_img_list as $delete_img_path ){
+        $s3->deleteObject([
+            'Bucket' => MY_BUCKET,
+            'Key' => $delete_img_path
+        ]);
+    }
+
+    // $after_delete_result = $s3->listObjects([
+    //     'Bucket' => MY_BUCKET,
+    //     'Prefix' => TARGET_PATH
+    // ]);
+
+    // echo "==============削除後==========\n";
+    // foreach ($after_delete_result['Contents'] as $object) {
+    //     echo $object['Key'] . PHP_EOL;
+    // }
+
+} catch (S3Exception $e) {
+    echo $e->getMessage() . PHP_EOL;
+}
