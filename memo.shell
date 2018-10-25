@@ -1,0 +1,12 @@
+#!/bin/sh
+
+####
+#   S3から手元に特定のフォルダ内のファイルをダウンロードするコマンド
+#
+#   1.実行前に.aws/credentialsの[defaul]が接続したい環境かを確認する
+#   2.ダウンロード元のリージョン、バケット名、ファイルパスやダウンロード先のパスを確認する
+#
+#   AWS-CLIについて
+#   https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/cli-install-macos.html
+###
+aws s3 cp --region [リージョン] s3://[バケット名][ファイルパス] [ダウンロード先] --recursive
